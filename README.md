@@ -278,3 +278,5 @@ The frontend uses standard **HTML, CSS, and JavaScript**, rendered via Django’
     * Forms for user authentication.
 * `todo_list.html`
     * Displays the list of tasks for a logged-in user.
+
+## Thank you for your attention 💌
