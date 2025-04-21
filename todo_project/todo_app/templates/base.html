@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TikTasks{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        purple: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .shadow-hover:hover {
+            box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.3), 0 4px 6px -2px rgba(139, 92, 246, 0.15);
+            transition: all 0.3s ease;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <nav class="gradient-bg text-white p-4 shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{% url 'todo_list' %}" class="text-xl font-bold flex items-center">
+                <i class="fas fa-tasks mr-2"></i>
+                <span>TikTasks</span>
+            </a>
+            <div>
+                {% if user.is_authenticated %}
+                    <div class="flex items-center">
+                        <span class="mr-4 hidden md:inline"><i class="fas fa-user mr-2 text-white"></i>{{ user.username }}</span>
+                        <form action="{% url 'logout' %}" method="post" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-white bg-opacity-20 hover:bg-opacity-30 py-2 px-4 rounded-lg transition duration-300 shadow-hover">
+                                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                            </button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="flex items-center space-x-3">
+                        <a href="{% url 'login' %}" class="hover:underline flex items-center">
+                            <i class="fas fa-sign-in-alt mr-1"></i> Login
+                        </a>
+                        <a href="{% url 'register' %}" class="bg-white bg-opacity-20 hover:bg-opacity-30 py-2 px-4 rounded-lg transition duration-300 shadow-hover">
+                            <i class="fas fa-user-plus mr-1"></i> Register
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-8 px-4 flex-grow">
+        <div id="toast-container" class="fixed top-20 right-4 z-50 w-72"></div>
+        
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer class="mt-12 py-6 bg-purple-900 text-white">
+        <div class="container mx-auto text-center">
+            <p>&copy; 2025 TikTasks. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            let bgColor = '#8b5cf6'; // Default purple
+            let textColor = '#ffffff';
+            
+            if (type === 'error') {
+                bgColor = '#ef4444';
+            } else if (type === 'warning') {
+                bgColor = '#f59e0b';
+            } else if (type === 'info') {
+                bgColor = '#3b82f6';
+            }
+            
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: bgColor,
+                stopOnFocus: true,
+                className: "rounded-lg shadow-lg font-medium",
+                style: {
+                    fontFamily: 'Poppins, sans-serif'
+                },
+                onClick: function(){}
+            }).showToast();
+        }
+        
+        // Process Django messages as toasts
+        document.addEventListener('DOMContentLoaded', function() {
+            {% if messages %}
+                {% for message in messages %}
+                    showToast("{{ message }}", "{{ message.tags }}");
+                {% endfor %}
+            {% endif %}
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

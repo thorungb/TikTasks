@@ -1,0 +1,465 @@
+{% extends 'base.html' %}
+
+{% block title %}My Tasks - TikTasks{% endblock %}
+
+{% block extra_head %}
+<style>
+    .todo-card {
+        transition: all 0.3s ease;
+        transform: translateY(0);
+    }
+    
+    .todo-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .todo-status-pending {
+        background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+        border-left: 4px solid #ffd54f;
+    }
+    
+    .todo-status-in_progress {
+        background: linear-gradient(135deg, #bbdefb 0%, #90caf9 100%);
+        border-left: 4px solid #42a5f5;
+    }
+    
+    .todo-status-completed {
+        background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%);
+        border-left: 4px solid #66bb6a;
+    }
+    
+    .status-badge {
+        transition: all 0.3s ease;
+    }
+    
+    .input-focus-effect:focus {
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-out;
+    }
+    
+    @keyframes slideInUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .animate-slide-in {
+        animation: slideInUp 0.4s ease-out;
+    }
+    
+    .todo-list-item {
+        animation: slideInUp 0.4s ease-out;
+        animation-fill-mode: both;
+    }
+    
+    .dropdown-menu {
+        animation: fadeIn 0.2s ease-out;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .dropdown-toggle {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .dropdown-content {
+        position: absolute;
+        right: 0;
+        z-index: 1000;
+        min-width: 200px;
+        isolation: isolate;
+    }
+
+    .dropdown-open {
+        position: relative;
+        z-index: 1050 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Form -->
+    <div class="lg:col-span-1 animate-fade-in">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+            <div class="flex items-center mb-6">
+                <div class="bg-purple-100 p-2 rounded-lg mr-3">
+                    {% if edit_mode %}
+                    <i class="fas fa-edit text-purple-600"></i>
+                    {% else %}
+                    <i class="fas fa-plus text-purple-600"></i>
+                    {% endif %}
+                </div>
+                <h2 class="text-xl font-bold text-gray-800">
+                    {% if edit_mode %}
+                    Edit Task
+                    {% else %}
+                    Add New Task
+                    {% endif %}
+                </h2>
+            </div>
+            
+            {% if edit_mode %}
+            <form method="POST" action="{% url 'edit_todo' todo.id %}" enctype="multipart/form-data" id="todo-form">
+            {% else %}
+            <form method="POST" enctype="multipart/form-data" id="todo-form">
+            {% endif %}
+                {% csrf_token %}
+                
+                <div class="mb-4">
+                    <label for="{{ form.title.id_for_label }}" class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-heading text-purple-500 mr-2"></i>Title
+                    </label>
+                    <input type="text" name="title" id="{{ form.title.id_for_label }}" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 input-focus-effect" 
+                           placeholder="What do you need to do?" required
+                           value="{{ form.title.value|default:'' }}">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="{{ form.description.id_for_label }}" class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-align-left text-purple-500 mr-2"></i>Description
+                    </label>
+                    <textarea name="description" id="{{ form.description.id_for_label }}" rows="3" 
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 input-focus-effect"
+                              placeholder="Add more details about this task">{{ form.description.value|default:'' }}</textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="{{ form.status.id_for_label }}" class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-tasks text-purple-500 mr-2"></i>Status
+                    </label>
+                    <div class="relative">
+                        <select name="status" id="{{ form.status.id_for_label }}" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 input-focus-effect appearance-none">
+                            <option value="pending" {% if form.status.value == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="in_progress" {% if form.status.value == 'in_progress' %}selected{% endif %}>In Progress</option>
+                            <option value="completed" {% if form.status.value == 'completed' %}selected{% endif %}>Completed</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label for="{{ form.image.id_for_label }}" class="block text-gray-700 font-medium mb-2">
+                        <i class="fas fa-image text-purple-500 mr-2"></i>Image (Optional)
+                    </label>
+                    <div class="flex items-center justify-center w-full">
+                        <label for="{{ form.image.id_for_label }}" class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition duration-300">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <i class="fas fa-cloud-upload-alt text-gray-400 text-xl mb-1"></i>
+                                <p class="text-sm text-gray-500" id="image-upload-text">
+                                    {% if form.image.value %}
+                                    <span class="font-medium">Current image: {{ form.image.value }}</span>
+                                    {% else %}
+                                    <span class="font-medium">Click to upload</span> or drag and drop
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <input type="file" name="image" id="{{ form.image.id_for_label }}" class="hidden">
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Be careful, you cannot edit it after this.</p>
+                </div>
+                
+                <button type="submit" id="add-todo-btn" class="w-full gradient-bg text-white py-3 px-4 rounded-lg hover:opacity-90 shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center">
+                    {% if edit_mode %}
+                    <i class="fas fa-save mr-2"></i>Update Task
+                    {% else %}
+                    <i class="fas fa-plus-circle mr-2"></i>Add Task
+                    {% endif %}
+                </button>
+                
+                {% if edit_mode %}
+                <a href="{% url 'todo_list' %}" class="w-full block text-center mt-3 text-purple-600 hover:text-purple-800 transition duration-300">
+                    <i class="fas fa-times-circle mr-1"></i>Cancel Edit
+                </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    
+    <div class="lg:col-span-2">
+        <div class="bg-white p-6 rounded-xl shadow-lg animate-fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center">
+                    <div class="bg-purple-100 p-2 rounded-lg mr-3">
+                        <i class="fas fa-clipboard-list text-purple-600"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">My Task List</h2>
+                </div>
+                <div>
+                    <span class="text-sm text-gray-500">Total: {% if todos %}{{ todos|length }}{% else %}0{% endif %} tasks</span>
+                </div>
+            </div>
+            
+            {% if todos %}
+            <div class="space-y-4 " id="todo-container">
+                {% for todo in todos %}
+                <div class="todo-card todo-list-item rounded-xl shadow-md overflow-visible relative" style="animation-delay: {{ forloop.counter0|floatformat:1 }}s">
+                        <div class="todo-status-{{ todo.status }} p-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="text-lg font-semibold">{{ todo.title }}</h3>
+                                    {% if todo.description %}
+                                        <p class="text-gray-700 mt-2">{{ todo.description }}</p>
+                                    {% endif %}
+                                    
+                                    {% if todo.image %}
+                                        <div class="mt-4">
+                                            <img src="{{ todo.image.url }}" alt="{{ todo.title }}" class="max-h-40 rounded-lg shadow-sm">
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <p class="text-xs text-gray-500 mt-3 flex items-center">
+                                        <i class="far fa-clock mr-1"></i> {{ todo.created_at|date:"M d, Y H:i" }}
+                                    </p>
+                                </div>
+                                
+                                <div class="dropdown-toggle relative" x-data="{ open: false }">
+                                    <button @click="open = !open" class="text-gray-600 hover:text-purple-600 transition duration-300 p-2 rounded-full hover:bg-purple-100">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    
+                                    <div x-show="open" @click.away="open = false" class="dropdown-content absolute top-0 right-0 mt-10 w-64 bg-white rounded-xl shadow-lg py-1 z-[9999]">
+                                        <button class="status-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50" data-todo-id="{{ todo.id }}" data-status="pending">
+                                            <i class="fas fa-clock mr-2 text-yellow-500"></i> Mark as Pending
+                                        </button>
+                                        <button class="status-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50" data-todo-id="{{ todo.id }}" data-status="in_progress">
+                                            <i class="fas fa-spinner mr-2 text-blue-500"></i> Mark as In Progress
+                                        </button>
+                                        <button class="status-btn block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50" data-todo-id="{{ todo.id }}" data-status="completed">
+                                            <i class="fas fa-check-circle mr-2 text-green-500"></i> Mark as Completed
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="absolute bottom-3 right-3 flex space-x-2">
+                                    <a href="{% url 'edit_todo' todo.id %}" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 text-sm shadow">
+                                        <i class="fas fa-edit mr-1"></i> Edit
+                                    </a>
+                                    <form action="{% url 'delete_todo' todo.id %}" method="POST" onsubmit="return confirm('Are you sure you want to delete this task?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm shadow">
+                                            <i class="fas fa-trash-alt mr-1"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>                                
+                            </div>
+                                
+                                <div class="mt-3">
+                                    <span class="status-badge inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
+                                        {% if todo.status == 'pending' %}bg-yellow-200 text-yellow-800
+                                        {% elif todo.status == 'in_progress' %}bg-blue-200 text-blue-800
+                                        {% else %}bg-green-200 text-green-800{% endif %}">
+                                        {% if todo.status == 'pending' %}
+                                            <i class="fas fa-clock mr-1"></i> Pending
+                                        {% elif todo.status == 'in_progress' %}
+                                            <i class="fas fa-spinner mr-1 fa-spin"></i> In Progress
+                                        {% else %}
+                                            <i class="fas fa-check-circle mr-1"></i> Completed
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 animate-fade-in">
+                    <div class="inline-flex items-center justify-center h-20 w-20 rounded-full bg-purple-100 mb-4">
+                        <i class="fas fa-tasks text-purple-500 text-2xl"></i>
+                    </div>
+                    <p class="text-gray-500">No tasks yet. Add your first task above!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Display file name when uploaded
+        const fileInput = document.getElementById('{{ form.image.id_for_label }}');
+        const imageUploadText = document.getElementById('image-upload-text');
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                const fileName = this.files[0]?.name;
+                if (fileName) {
+                    if (imageUploadText) {
+                        imageUploadText.innerHTML = `<span class="font-medium">${fileName}</span>`;
+                    }
+                    
+                    // Show a toast notification for file selection
+                    showToast(`File "${fileName}" selected`, 'info');
+                }
+            });
+        }
+        
+        // Form submission
+        const todoForm = document.getElementById('todo-form');
+        const addTodoBtn = document.getElementById('add-todo-btn');
+        
+        if (todoForm) {
+            todoForm.addEventListener('submit', function() {
+                if (addTodoBtn.innerText.includes('Update')) {
+                    addTodoBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating Task...';
+                } else {
+                    addTodoBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Adding Task...';
+                }
+                addTodoBtn.disabled = true;
+            });
+        }
+        
+        // Status update buttons
+        const statusButtons = document.querySelectorAll('.status-btn');
+        statusButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const todoId = this.getAttribute('data-todo-id');
+                const status = this.getAttribute('data-status');
+                
+                // Show loading indicator
+                this.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Updating...`;
+                
+                updateTodoStatus(todoId, status);
+            });
+        });
+
+        // Update todo status via AJAX
+        function updateTodoStatus(todoId, status) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(`/todo/${todoId}/update-status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `status=${status}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success toast
+                    showToast('Task status updated successfully!', 'success');
+                    
+                    // Apply a subtle animation to the page before reload
+                    document.getElementById('todo-container').style.opacity = '0.6';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    showToast('Error updating task status', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred while updating the task', 'error');
+            });
+        }
+        
+        // Add event listener for task deletion
+        const deleteButtons = document.querySelectorAll('form[action^="{% url "delete_todo" 0 %}"'.replace('/0/', '/'));
+        deleteButtons.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Deleting...';
+                submitBtn.disabled = true;
+            });
+        });
+        
+        // Add keyboard shortcut for adding a new task (Alt+N)
+        document.addEventListener('keydown', function(e) {
+            if (e.altKey && e.key === 'n') {
+                e.preventDefault();
+                document.getElementById('{{ form.title.id_for_label }}').focus();
+            }
+        });
+        
+        // Add confirmation for page leave if form has been interacted with
+        const formInputs = document.querySelectorAll('#todo-form input, #todo-form textarea, #todo-form select');
+        let formChanged = false;
+        
+        formInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                formChanged = true;
+            });
+        });
+        
+        window.addEventListener('beforeunload', function(e) {
+            if (formChanged && !todoForm.isSubmitting) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        });
+        
+        todoForm.addEventListener('submit', function() {
+            todoForm.isSubmitting = true;
+        });
+        
+        // Add drag and drop functionality for image uploads
+        const dropZone = document.querySelector('label[for="{{ form.image.id_for_label }}"]');
+        
+        if (dropZone) {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropZone.classList.add('border-purple-500', 'bg-purple-50');
+            }
+            
+            function unhighlight() {
+                dropZone.classList.remove('border-purple-500', 'bg-purple-50');
+            }
+            
+            dropZone.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                fileInput.files = files;
+                
+                // Trigger change event
+                const event = new Event('change', { bubbles: true });
+                fileInput.dispatchEvent(event);
+            }
+        }
+    });
+</script>
+{% endblock %}
