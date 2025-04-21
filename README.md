@@ -73,6 +73,8 @@ This project uses **PostgreSQL (via Neon)** as the database, and the schema is h
 
 
 ### Database schema
+![database schema](https://github.com/user-attachments/assets/61527395-ddb8-42f8-98da-449183894fa9)
+
 
 **Tables in the Database:**
 
@@ -185,12 +187,6 @@ TIKTASKS/
 8. Access the application which will be available at
 
 		`http://127.0.0.1:8000/`
-
-Example user:
-```
-    Username: Jane
-    Password: janniejane
-```
 
 ## Software Architecture
 
